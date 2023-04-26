@@ -27,6 +27,11 @@ def start_handler(message):
     )
 
 
+@bot.message_handler(commands=['Сгенерируй изображение'])
+def img_generate(message):
+
+
+
 @bot.message_handler(commands=['help'])
 def help_handler(message):
     user_id = message.chat.id

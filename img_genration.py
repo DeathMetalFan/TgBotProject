@@ -2,7 +2,7 @@ import os
 from PIL import Image, ImageDraw, ImageFont
 
 
-def generate(line, font_name, bg_color=(0, 0, 0), txt_color=(255, 255, 255)):
+def generate(line, font_name, username, bg_color=(0, 0, 0), txt_color=(255, 255, 255)):
     # Принимаем на вход текст, имя шрифта, цвета задника и текста
 
     IMG_WIDTH = 800
@@ -11,8 +11,7 @@ def generate(line, font_name, bg_color=(0, 0, 0), txt_color=(255, 255, 255)):
     font_image = Image.new("RGB", (100, 100), (0, 0, 0))
 
     # Загружаем шрифт
-    a = f'static{os.sep}fonts{os.sep}{font_name}'
-    font = ImageFont.truetype(a, 100)
+    font = ImageFont.truetype(f'static{os.sep}fonts{os.sep}{font_name}', 100)
 
     # Создаем инструмент для рисования на изображении
     font_draw = ImageDraw.Draw(font_image)
@@ -28,6 +27,11 @@ def generate(line, font_name, bg_color=(0, 0, 0), txt_color=(255, 255, 255)):
             if font_draw.textsize(current_line, font)[0] + 100 <= IMG_WIDTH:
                 current_line += i
             else:
+                list_of_letters = [i for i in current_line]
+                list_of_letters[0] = list_of_letters[0].upper()
+                list_of_letters[1:-1:] = [i.lower() for i in list_of_letters[1:-1:]]
+                list_of_letters[-1] = list_of_letters[-1].upper()
+                current_line = ''.join(list_of_letters)
                 lines.append(current_line)
                 current_line = ''
     else:
@@ -36,7 +40,7 @@ def generate(line, font_name, bg_color=(0, 0, 0), txt_color=(255, 255, 255)):
     text_width = font_draw.textsize(max(lines, key=lambda x: len(x)), font)[0]
 
     # Создаём окончательное изображение
-    text_width_height_tuple = text_width + 100, len(lines) * text_height + 50
+    text_width_height_tuple = int(text_width + 100), int(len(lines) * text_height * 0.7 + 50)
     current_image = Image.new("RGB", text_width_height_tuple, bg_color)
     draw = ImageDraw.Draw(current_image)
 
@@ -44,12 +48,9 @@ def generate(line, font_name, bg_color=(0, 0, 0), txt_color=(255, 255, 255)):
     count = 0
     for i in lines:
         x = (current_image.width - font_draw.textsize(i, font)[0]) / 2
-        y = (text_height * count)
+        y = int(text_height * count * 0.65)
         draw.text((x, y), i, txt_color, font=font)
         count += 1
 
     # Сохраняем изображение
-    current_image.save("logo.png")
-
-
-generate('XavlegbmaofffassssitimiwoamndutroabcwapwaeiippohfffX'.upper(), 'maskdown.otf')
+    current_image.save(f"usercache{os.sep}{username}{os.sep}logo.png")
