@@ -2,12 +2,13 @@ from datetime import datetime
 import os
 import logging
 import csv
-from telegram.ext import Application, MessageHandler, CommandHandler, filters
+from telegram.ext import Application, CommandHandler
 from telegram import ReplyKeyboardMarkup
 from random import choice
 from config import BOT_TOKEN
 from img_generation import generate
-import sqlalchemy
+import sqlite3
+
 
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.DEBUG
@@ -23,7 +24,7 @@ help_message = 'Этот бот может генерировать изобра
 
 async def start_function(update, context):
     user = update.effective_user
-    reply_keyboard = [['/img_gen', '/music_tip', '/news_music', '/help']]
+    reply_keyboard = [['/img_gen', '/music_tip', '/help']]
     markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True)
     folder_path = os.path.join(os.getcwd(), 'usercache', user.username)
     if not os.path.exists(folder_path):
@@ -52,7 +53,8 @@ async def img_generator(update, context):
             color_trd = int(color_bg.split()[2])
             color_bg = tuple([color_fst, color_scd, color_trd])
         image = generate(text, color_text, color_bg)
-        image_name = f'{datetime.now()}.png'
+        dt_now = datetime.now()
+        image_name = f'{dt_now.strftime("%Y%m%d_%H-%M-%S")}.png'
         image_path = f'usercache/{user.username}/{image_name}'
         image.save(image_path)
         await context.bot.send_photo(chat_id=update.message.chat_id, photo=open(image_path, 'rb'))
@@ -62,7 +64,32 @@ async def help_function(update, context):
     await update.message.reply_text(help_message)
 
 
+async def recommend_function(update, context):
+    user = update.effective_user
+
+    # Подключение к БД
+    connection = sqlite3.connect(f'static{os.sep}db{os.sep}music.sqlite')
+
+    # Создание курсора
+    cursor = connection.cursor()
+
+    # Получаем имя случайного альбома
+    album_name = choice([i[0] for i in cursor.execute('''SELECT name FROM Albums''').fetchall()])
+
+    # Выполнение запроса и получение всех результатов
+    album_author, album_year, album_genre, cover_link, album_link = cursor.execute(f'''SELECT author, year, genre, cover_link, album_link FROM Albums WHERE name = "{album_name}"''').fetchall()[0]
+    
+    text = f'{album_author} - {album_name}\n' \
+           f'{album_year}\n' \
+           f'{album_genre}\n' \
+           f'Ссылка на альбом - {album_link}'
+    filename = f'{cover_link}'
+    await context.bot.send_photo(chat_id=update.message.chat_id, photo=open(filename, 'rb'), caption=text)
+
+
+
 def main():
+
     # Создаём объект Application.
     bot = Application.builder().token(BOT_TOKEN).build()
 
@@ -70,6 +97,7 @@ def main():
     bot.add_handler(CommandHandler('start', start_function))
     bot.add_handler(CommandHandler('help', help_function))
     bot.add_handler(CommandHandler('img_gen', img_generator))
+    bot.add_handler(CommandHandler('music_tip', recommend_function))
 
     # Запускаем приложение.
     bot.run_polling()
